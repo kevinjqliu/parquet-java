@@ -29,16 +29,13 @@ import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.junit.Test;
 
-public class TestReadWithUnknownLogicalType {
+public class TestReadWithVariantLogicalType {
   private static final String VARIANT_FILE = "/shredded_variant/case-001.parquet";
-  private static final String ID_ONLY_PROJECTION_SCHEMA = "message root {\n" + "optional int32 id;\n" + "}";
+  private static final String ID_ONLY_PROJECTION_SCHEMA = "message root {\n" + "  required int32 id = 1;\n" + "}";
 
   @Test
-  public void testReadProjectedColumnFromFileWithUnknownLogicalType() throws Exception {
-    URL resource = TestReadWithUnknownLogicalType.class.getResource(VARIANT_FILE);
-    assertNotNull(resource);
-
-    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(resource.toURI()))
+  public void testReadProjectedColumnFromFileWithVariantLogicalType() throws Exception {
+    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), variantPath())
         // Request only the known id column; the VARIANT column is intentionally not projected.
         .set(ReadSupport.PARQUET_READ_SCHEMA, ID_ONLY_PROJECTION_SCHEMA)
         .build()) {
@@ -47,5 +44,11 @@ public class TestReadWithUnknownLogicalType {
       assertEquals(1, row.getInteger("id", 0));
       assertNull(reader.read());
     }
+  }
+
+  private static Path variantPath() throws Exception {
+    URL resource = TestReadWithVariantLogicalType.class.getResource(VARIANT_FILE);
+    assertNotNull(resource);
+    return new Path(resource.toURI());
   }
 }
