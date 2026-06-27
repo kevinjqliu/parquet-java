@@ -1,0 +1,86 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.parquet.hadoop;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import java.net.URL;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.parquet.example.data.Group;
+import org.apache.parquet.format.converter.ParquetMetadataConverter;
+import org.apache.parquet.hadoop.api.ReadSupport;
+import org.apache.parquet.hadoop.example.GroupReadSupport;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.schema.GroupType;
+import org.junit.Test;
+
+public class TestReadWithVariantLogicalType {
+  private static final String VARIANT_FILE = "/shredded_variant/case-001.parquet";
+  private static final String ID_ONLY_PROJECTION_SCHEMA = "message root {\n" + "  required int32 id = 1;\n" + "}";
+
+  @Test
+  public void testReadProjectedColumnFromFileWithVariantLogicalType() throws Exception {
+    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), variantPath())
+        // Request only the known id column; the VARIANT column is intentionally not projected.
+        .set(ReadSupport.PARQUET_READ_SCHEMA, ID_ONLY_PROJECTION_SCHEMA)
+        .build()) {
+      Group row = reader.read();
+      assertNotNull(row);
+      assertEquals(1, row.getInteger("id", 0));
+      assertNull(reader.read());
+    }
+  }
+
+  @Test
+  public void testVariantLogicalTypeIsIgnoredInFooterSchema() throws Exception {
+    ParquetMetadata footer = ParquetFileReader.readFooter(
+        new Configuration(), variantPath(), ParquetMetadataConverter.NO_FILTER);
+    GroupType variantType = footer.getFileMetaData().getSchema().getType("var").asGroupType();
+
+    assertNull(variantType.getLogicalTypeAnnotation());
+    assertNull(variantType.getType("metadata").getLogicalTypeAnnotation());
+    assertNull(variantType.getType("value").getLogicalTypeAnnotation());
+  }
+
+  @Test
+  public void testReadVariantLogicalTypeColumnAsPhysicalSchema() throws Exception {
+    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), variantPath()).build()) {
+      Group row = reader.read();
+      assertNotNull(row);
+      assertEquals(1, row.getInteger("id", 0));
+      assertEquals(1, row.getFieldRepetitionCount("var"));
+      Group variant = row.getGroup("var", 0);
+      assertNotNull(variant);
+      assertTrue(variant.getType().containsField("metadata"));
+      assertTrue(variant.getType().containsField("value"));
+      assertEquals(1, variant.getFieldRepetitionCount("metadata"));
+      assertNull(reader.read());
+    }
+  }
+
+  private static Path variantPath() throws Exception {
+    URL resource = TestReadWithVariantLogicalType.class.getResource(VARIANT_FILE);
+    assertNotNull(resource);
+    return new Path(resource.toURI());
+  }
+}
