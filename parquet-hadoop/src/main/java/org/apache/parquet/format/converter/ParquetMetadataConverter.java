@@ -1343,6 +1343,10 @@ public class ParquetMetadataConverter {
   }
 
   LogicalTypeAnnotation getLogicalTypeAnnotation(LogicalType type) {
+    if (type.getSetField() == null) {
+      // Older generated Thrift classes skip newer logical type union fields.
+      return null;
+    }
     switch (type.getSetField()) {
       case MAP:
         return LogicalTypeAnnotation.mapType();
@@ -2065,16 +2069,17 @@ public class ParquetMetadataConverter {
         buildChildren((Types.GroupBuilder) childBuilder, schema, schemaElement.num_children, columnOrders);
       }
 
+      LogicalTypeAnnotation logicalType =
+          schemaElement.isSetLogicalType() ? getLogicalTypeAnnotation(schemaElement.logicalType) : null;
       if (schemaElement.isSetLogicalType()) {
-        childBuilder.as(getLogicalTypeAnnotation(schemaElement.logicalType));
+        if (logicalType != null) {
+          childBuilder.as(logicalType);
+        }
       }
       if (schemaElement.isSetConverted_type()) {
         OriginalType originalType = getLogicalTypeAnnotation(schemaElement.converted_type, schemaElement)
             .toOriginalType();
-        OriginalType newOriginalType = (schemaElement.isSetLogicalType()
-                && getLogicalTypeAnnotation(schemaElement.logicalType) != null)
-            ? getLogicalTypeAnnotation(schemaElement.logicalType).toOriginalType()
-            : null;
+        OriginalType newOriginalType = logicalType == null ? null : logicalType.toOriginalType();
         if (!originalType.equals(newOriginalType)) {
           if (newOriginalType != null) {
             LOG.warn(
