@@ -122,3 +122,32 @@ following in their NOTICE files:
   This product includes software developed by
   The Apache Software Foundation (http://www.apache.org/).
 
+--------------------------------------------------------------------------------
+
+This product bundles aircompressor, which includes the following copyright
+notices for its Snappy implementation:
+
+  Copyright 2011 Dain Sundstrom <dain@iq80.com>
+  Copyright 2011, Google Inc. <opensource@google.com>
+
+--------------------------------------------------------------------------------
+
+This product bundles snappy-java, which includes the following in its NOTICE
+file:
+
+  This product includes software developed by Google
+  Snappy: http://code.google.com/p/snappy/ (New BSD License)
+
+  This product includes software developed by Apache
+  PureJavaCrc32C from apache-hadoop-common http://hadoop.apache.org/
+  (Apache 2.0 license)
+
+  This library contains statically linked libstdc++. This inclusion is allowed
+  by the "GCC Runtime Library Exception":
+  http://gcc.gnu.org/onlinedocs/libstdc++/manual/license.html
+
+  Contributors:
+    Tatu Saloranta
+      Providing benchmark suite
+    Alec Wysoker
+      Performance and memory usage improvement
